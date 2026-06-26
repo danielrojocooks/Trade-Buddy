@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#3B4CCA" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Jost:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <title>Trade Buddy</title>
+</head>
+<body>
+  <header>
+    <h1>Is it a fair trade?</h1>
+  </header>
+
+  <!-- STEP 1: capture two photos -->
+  <main id="capture">
+    <button class="tile red" id="redTile">
+      <span class="tile-label">RED'S STUFF</span>
+      <svg class="cam" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3l-1.5 2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.5L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+      <span class="tile-hint">tap to take a photo</span>
+      <img class="thumb" id="redThumb" alt="" hidden />
+    </button>
+
+    <div class="vs">VS</div>
+
+    <button class="tile yellow" id="yellowTile">
+      <span class="tile-label">YELLOW'S STUFF</span>
+      <svg class="cam" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3l-1.5 2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.5L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+      <span class="tile-hint">tap to take a photo</span>
+      <img class="thumb" id="yellowThumb" alt="" hidden />
+    </button>
+
+    <button class="go" id="goBtn" disabled>CHECK TRADE!</button>
+
+    <input type="file" id="redInput" accept="image/*" capture="environment" hidden />
+    <input type="file" id="yellowInput" accept="image/*" capture="environment" hidden />
+  </main>
+
+  <!-- STEP 2: thinking -->
+  <main id="loading" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <p class="loading-text">Checking the trade…</p>
+  </main>
+
+  <!-- STEP 3: result -->
+  <main id="result" hidden>
+    <img class="face" id="face" alt="" />
+    <h2 class="headline" id="headline"></h2>
+    <div class="gem" id="gem" hidden>✨ <span id="gemNote"></span></div>
+    <div class="cards" id="cards">
+      <div class="cardcol">
+        <h3>RED</h3>
+        <ul id="redList"></ul>
+      </div>
+      <div class="cardcol">
+        <h3>YELLOW</h3>
+        <ul id="yellowList"></ul>
+      </div>
+    </div>
+    <button class="again" id="againBtn">TRY ANOTHER TRADE</button>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
