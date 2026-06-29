@@ -145,7 +145,7 @@ def _charge_day(ip: str, cost: float):
 
 
 def _blocked_result(headline: str) -> dict:
-    return {"cards_found": False, "verdict": "stop", "face": "confused",
+    return {"cards_found": False, "verdict": "stop", "face": "sleeping",
             "headline": headline, "gem_alert": False, "gem_note": "",
             "red_cards": [], "yellow_cards": []}
 

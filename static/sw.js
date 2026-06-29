@@ -11,6 +11,7 @@ const SHELL = [
   "/faces/treasure.png",
   "/faces/confused.png",
   "/faces/error.png",
+  "/faces/sleeping.png",
 ];
 
 self.addEventListener("install", (e) => {
