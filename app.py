@@ -191,16 +191,16 @@ For every item you can make out, give a short name and a rough tier:
   - "ok"       : a little better, a popular or slightly-above-common item.
   - "nice"     : clearly desirable (a holo/shiny/full-art card, a sought-after
                  figure). Cool, but not real money. Most "good" items land here.
-  - "treasure" : anything that MIGHT be worth real money. Flag it here if there
-                 is ANY chance it is special: a card in a hard plastic grading
-                 slab (PSA / CGC / BGS case), anything that looks old or vintage,
-                 a 1st Edition stamp, a secret / special-illustration / full-art /
-                 chase card, a premium or unusual foil, a sealed pack, an
-                 autograph, or simply an item you are not sure about. You CANNOT
-                 look up prices, so judge by sight and lean toward caution: when
-                 in doubt, call it treasure. It is far better to send an ordinary
-                 card to a grown-up by mistake than to let a kid trade away a
-                 valuable one.
+  - "treasure" : ONLY items with a strong, specific sign of real value:
+                 * a card sealed in a hard plastic grading slab (PSA / CGC / BGS),
+                 * a clearly old / vintage card (old-style frame or art, a
+                   1st Edition stamp, a WOTC-era look),
+                 * or a specific card you actually recognize as a known high-value
+                   or chase card.
+                 Do NOT mark treasure just because a card is holo, shiny, foil, or
+                 full-art. Most of those are common and worth very little, so they
+                 are "nice", not "treasure". A graded slab is the single most
+                 reliable signal of value; when you see one, always flag it.
 
 Return these fields:
   - cards_found : true ONLY if BOTH photos clearly show real tradeable items
@@ -226,14 +226,13 @@ Return these fields:
                    off colors, misspelled text). Be unsure and gentle, never
                    accusatory.
 
-LEAN GENEROUS ON FAIRNESS, BUT CAUTIOUS ON VALUE. For everyday trades, when in
-doubt, say "fair" and let friends trade. The ONE exception is safety: if any item
-might be worth real money, mark it "treasure" and set verdict to "stop" so a
-grown-up checks first, even when you are unsure and even if the trade otherwise
-looks fine or merely lopsided. A treasure ALWAYS makes the verdict "stop" and
-overrides fair/uneven, no matter which side it is on. A big value gap (one side
-clearly worth a lot more) should also push you to "stop", not just "uneven". If
-you don't clearly see tradeable items on BOTH sides, set cards_found false.
+LEAN GENEROUS. For everyday trades, when in doubt say "fair" and let friends
+trade. Do NOT flag ordinary shiny / holo / full-art cards as treasure. The ONE
+safety exception: when an item shows a STRONG sign of real value (a graded slab,
+a clearly vintage or 1st-Edition card, or a card you genuinely recognize as
+valuable), mark it "treasure" and set verdict to "stop" so a grown-up checks
+first, no matter which side it is on. A treasure ALWAYS makes the verdict "stop".
+If you don't clearly see tradeable items on BOTH sides, set cards_found false.
 """
 
 _CARD_ARRAY = {
