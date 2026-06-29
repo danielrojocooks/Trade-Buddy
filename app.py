@@ -16,6 +16,7 @@ import json
 import time
 import random
 import logging
+import statistics
 import threading
 import urllib.parse
 import urllib.request
@@ -162,17 +163,24 @@ def _card_price(name, number):
             req.add_header("X-Api-Key", POKEMONTCG_KEY)
         with urllib.request.urlopen(req, timeout=6) as resp:
             data = json.load(resp)
-        best = 0.0
+        # Median of the realistic (non-1st-edition) market prices. 1st-edition
+        # variants are rare outliers a kid won't have and inflate the value;
+        # median across the remaining printings/variants tracks a normal copy.
+        # Prefer TCGplayer (USD); fall back to Cardmarket only if no USD data.
+        usd, eur = [], []
         for c in data.get("data", []):
             tp = (c.get("tcgplayer") or {}).get("prices") or {}
-            for v in tp.values():
+            for vk, v in tp.items():
+                if "1st" in vk.lower():
+                    continue
                 if isinstance(v, dict) and (v.get("market") or v.get("mid")):
-                    best = max(best, float(v.get("market") or v.get("mid")))
+                    usd.append(float(v.get("market") or v.get("mid")))
             cm = (c.get("cardmarket") or {}).get("prices") or {}
             for fld in ("averageSellPrice", "trendPrice"):
                 if cm.get(fld):
-                    best = max(best, float(cm[fld]))
-        price = best if best > 0 else None
+                    eur.append(float(cm[fld]))
+        pts = usd or eur
+        price = statistics.median(pts) if pts else None
     except Exception as e:
         log.warning("price lookup failed (%s #%s): %s", clean, num, e)
     _price_cache[key] = price
