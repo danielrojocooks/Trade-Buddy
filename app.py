@@ -307,11 +307,12 @@ def build_message(r: dict) -> str:
 
 
 def pick_face(r: dict) -> str:
-    if r.get("verdict") == "stop":
+    # Face always matches the verdict (and therefore the headline). The
+    # "confused" face is reserved for the no-cards path set in check().
+    v = r.get("verdict")
+    if v == "stop":
         return "treasure"        # real-money item, show a grown-up
-    if r.get("fake_warning"):
-        return "confused"        # something looks off
-    if r.get("verdict") == "uneven":
+    if v == "uneven":
         return "uneven"
     return "fair"
 
