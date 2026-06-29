@@ -124,6 +124,10 @@ PER_USER_DAILY = _env_num("PER_USER_DAILY", 50, int)
 
 # --- card price lookup (the real value check) ------------------------------
 PRICE_THRESHOLD_USD = _env_num("PRICE_THRESHOLD_USD", 20.0, float)
+# Price-based lopsided check: one side must be worth >= VALUE_RATIO x the other
+# AND the gap must be at least VALUE_GAP_USD before we call a trade uneven.
+VALUE_RATIO = _env_num("VALUE_RATIO", 3.0, float)
+VALUE_GAP_USD = _env_num("VALUE_GAP_USD", 5.0, float)
 POKEMONTCG_KEY = os.environ.get("POKEMONTCG_API_KEY")
 _price_cache = {}
 
@@ -176,14 +180,18 @@ def _card_price(name, number):
 
 
 def _price_scan(result):
-    """Return (side, max_price) across all priced cards. side is 'red'/'yellow'/None."""
+    """Return (top_side, top_price, totals). top_* = priciest single card and its
+    side; totals = summed market value per side. Only priced cards count."""
     top_side, top_price = None, 0.0
+    totals = {"red": 0.0, "yellow": 0.0}
     for side, field in (("red", "red_cards"), ("yellow", "yellow_cards")):
         for c in result.get(field, []):
             p = _card_price(c.get("name"), c.get("number"))
-            if p and p > top_price:
-                top_price, top_side = p, side
-    return top_side, top_price
+            if p:
+                totals[side] += p
+                if p > top_price:
+                    top_price, top_side = p, side
+    return top_side, top_price, totals
 _day = {"date": "", "spend": 0.0, "ips": {}}
 
 
@@ -454,15 +462,25 @@ def check(req: CheckRequest, request: Request):
         # Real market-price check overrides the model's by-sight value guess: if
         # any identified card actually sells for >= the threshold, force the
         # grown-up alert regardless of how the trade otherwise looks.
-        side, top_price = _price_scan(result)
+        side, top_price, totals = _price_scan(result)
+        rt, yt = totals["red"], totals["yellow"]
         _ids = [(c.get("name"), c.get("number")) for c in
                 result.get("red_cards", []) + result.get("yellow_cards", [])]
-        log.info("check: price scan side=%s top=$%.2f thr=$%.2f cards=%s",
-                 side, top_price, PRICE_THRESHOLD_USD, _ids)
+        log.info("check: price scan top=%s $%.2f thr=$%.2f red=$%.2f yellow=$%.2f cards=%s",
+                 side, top_price, PRICE_THRESHOLD_USD, rt, yt, _ids)
         if top_price >= PRICE_THRESHOLD_USD:
             result["verdict"] = "stop"
             result["special_side"] = side
             log.info("check: price override side=%s $%.2f -> stop", side, top_price)
+        elif result.get("verdict") != "stop" and rt > 0 and yt > 0:
+            # Both sides priced: let a real value gap drive the lopsided call.
+            hi, lo = max(rt, yt), min(rt, yt)
+            if hi >= VALUE_RATIO * lo and (hi - lo) >= VALUE_GAP_USD:
+                if result.get("verdict") == "fair":
+                    result["verdict"] = "uneven"
+                result["heavier"] = "red" if rt > yt else "yellow"
+                log.info("check: price lopsided red=$%.2f yellow=$%.2f -> uneven heavier=%s",
+                         rt, yt, result["heavier"])
         # The app writes the words from the structured judgment (see build_message).
         result["face"] = pick_face(result)
         result["headline"] = build_message(result)
