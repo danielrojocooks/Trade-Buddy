@@ -191,11 +191,16 @@ For every item you can make out, give a short name and a rough tier:
   - "ok"       : a little better, a popular or slightly-above-common item.
   - "nice"     : clearly desirable (a holo/shiny/full-art card, a sought-after
                  figure). Cool, but not real money. Most "good" items land here.
-  - "treasure" : genuinely valuable. A vintage or first-edition card, a rare
-                 chase card, a rare or limited collectible or figure, anything
-                 that looks like real money. These are RARE. Being shiny or cool
-                 does NOT automatically make something a treasure. Judge the item,
-                 not just the shine.
+  - "treasure" : anything that MIGHT be worth real money. Flag it here if there
+                 is ANY chance it is special: a card in a hard plastic grading
+                 slab (PSA / CGC / BGS case), anything that looks old or vintage,
+                 a 1st Edition stamp, a secret / special-illustration / full-art /
+                 chase card, a premium or unusual foil, a sealed pack, an
+                 autograph, or simply an item you are not sure about. You CANNOT
+                 look up prices, so judge by sight and lean toward caution: when
+                 in doubt, call it treasure. It is far better to send an ordinary
+                 card to a grown-up by mistake than to let a kid trade away a
+                 valuable one.
 
 Return these fields:
   - cards_found : true ONLY if BOTH photos clearly show real tradeable items
@@ -221,9 +226,14 @@ Return these fields:
                    off colors, misspelled text). Be unsure and gentle, never
                    accusatory.
 
-LEAN GENEROUS: these are little kids and the point is to let friends trade and
-have fun. When in doubt, say "fair". If you don't clearly see tradeable items on
-BOTH sides, set cards_found false.
+LEAN GENEROUS ON FAIRNESS, BUT CAUTIOUS ON VALUE. For everyday trades, when in
+doubt, say "fair" and let friends trade. The ONE exception is safety: if any item
+might be worth real money, mark it "treasure" and set verdict to "stop" so a
+grown-up checks first, even when you are unsure and even if the trade otherwise
+looks fine or merely lopsided. A treasure ALWAYS makes the verdict "stop" and
+overrides fair/uneven, no matter which side it is on. A big value gap (one side
+clearly worth a lot more) should also push you to "stop", not just "uneven". If
+you don't clearly see tradeable items on BOTH sides, set cards_found false.
 """
 
 _CARD_ARRAY = {
