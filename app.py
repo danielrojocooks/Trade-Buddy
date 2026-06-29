@@ -104,8 +104,20 @@ def _require_key(key):
 
 # --- spend guardrails ------------------------------------------------------
 # Hard daily money ceiling + per-user daily call cap. Both reset at UTC midnight.
-DAILY_BUDGET_USD = float(os.environ.get("DAILY_BUDGET_USD", "5"))
-PER_USER_DAILY = int(os.environ.get("PER_USER_DAILY", "50"))
+def _env_num(name, default, cast):
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    cleaned = raw.strip().lstrip("$").replace(",", "").strip()
+    try:
+        return cast(cleaned)
+    except (ValueError, TypeError):
+        log.warning("bad %s=%r, using default %r", name, raw, default)
+        return default
+
+
+DAILY_BUDGET_USD = _env_num("DAILY_BUDGET_USD", 5.0, float)
+PER_USER_DAILY = _env_num("PER_USER_DAILY", 50, int)
 _day = {"date": "", "spend": 0.0, "ips": {}}
 
 
