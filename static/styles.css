@@ -159,7 +159,7 @@ main {
 
 /* ---- result ---- */
 .face {
-  width: min(45vw, 180px);
+  width: min(52vw, 210px);
   height: auto;
   object-fit: contain;
 }
