@@ -444,6 +444,10 @@ def check(req: CheckRequest, request: Request):
         # any identified card actually sells for >= the threshold, force the
         # grown-up alert regardless of how the trade otherwise looks.
         side, top_price = _price_scan(result)
+        _ids = [(c.get("name"), c.get("number")) for c in
+                result.get("red_cards", []) + result.get("yellow_cards", [])]
+        log.info("check: price scan side=%s top=$%.2f thr=$%.2f cards=%s",
+                 side, top_price, PRICE_THRESHOLD_USD, _ids)
         if top_price >= PRICE_THRESHOLD_USD:
             result["verdict"] = "stop"
             result["special_side"] = side
