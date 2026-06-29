@@ -11,11 +11,14 @@ One Railway service: serves the PWA from /static and handles POST /check.
 """
 
 import os
+import re
 import json
 import time
 import random
 import logging
 import threading
+import urllib.parse
+import urllib.request
 from collections import deque
 
 import anthropic
@@ -118,6 +121,63 @@ def _env_num(name, default, cast):
 
 DAILY_BUDGET_USD = _env_num("DAILY_BUDGET_USD", 5.0, float)
 PER_USER_DAILY = _env_num("PER_USER_DAILY", 50, int)
+
+# --- card price lookup (the real value check) ------------------------------
+PRICE_THRESHOLD_USD = _env_num("PRICE_THRESHOLD_USD", 20.0, float)
+POKEMONTCG_KEY = os.environ.get("POKEMONTCG_API_KEY")
+_price_cache = {}
+
+
+def _card_price(name, number):
+    """Max market price (USD) for a card by name + collector number, or None.
+    Only looks up when a number is present (name alone is too ambiguous).
+    Cached in memory; never raises."""
+    if not name or not number:
+        return None
+    num = str(number).split("/")[0].strip().lstrip("0") or "0"
+    clean = re.sub(r"\s*#?\s*\d+\s*/\s*\d+\s*$", "", str(name)).strip()
+    if not clean:
+        return None
+    key = (clean.lower(), num.lower())
+    if key in _price_cache:
+        return _price_cache[key]
+    price = None
+    try:
+        q = urllib.parse.quote(f'name:"{clean}" number:"{num}"')
+        url = (f"https://api.pokemontcg.io/v2/cards?q={q}"
+               "&select=name,number,tcgplayer,cardmarket&pageSize=30")
+        req = urllib.request.Request(url)
+        req.add_header("User-Agent", "trade-buddy/1.0")
+        if POKEMONTCG_KEY:
+            req.add_header("X-Api-Key", POKEMONTCG_KEY)
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.load(resp)
+        best = 0.0
+        for c in data.get("data", []):
+            tp = (c.get("tcgplayer") or {}).get("prices") or {}
+            for v in tp.values():
+                if isinstance(v, dict) and (v.get("market") or v.get("mid")):
+                    best = max(best, float(v.get("market") or v.get("mid")))
+            cm = (c.get("cardmarket") or {}).get("prices") or {}
+            for fld in ("averageSellPrice", "trendPrice"):
+                if cm.get(fld):
+                    best = max(best, float(cm[fld]))
+        price = best if best > 0 else None
+    except Exception as e:
+        log.warning("price lookup failed (%s #%s): %s", clean, num, e)
+    _price_cache[key] = price
+    return price
+
+
+def _price_scan(result):
+    """Return (side, max_price) across all priced cards. side is 'red'/'yellow'/None."""
+    top_side, top_price = None, 0.0
+    for side, field in (("red", "red_cards"), ("yellow", "yellow_cards")):
+        for c in result.get(field, []):
+            p = _card_price(c.get("name"), c.get("number"))
+            if p and p > top_price:
+                top_price, top_side = p, side
+    return top_side, top_price
 _day = {"date": "", "spend": 0.0, "ips": {}}
 
 
@@ -186,7 +246,9 @@ A trade swaps Red's items for Yellow's items. Judge it impartially between the
 two sides. You ONLY return structured judgment; the app writes the words a child
 sees, so do not write any sentences yourself.
 
-For every item you can make out, give a short name and a rough tier:
+For every item you can make out, give a short name, its collector number if you
+can read it (the small printed number like "4/102" or "025"; use "" if none or
+unreadable), and a rough tier:
   - "junk"     : common, played, the vast majority of items.
   - "ok"       : a little better, a popular or slightly-above-common item.
   - "nice"     : clearly desirable (a holo/shiny/full-art card, a sought-after
@@ -241,9 +303,10 @@ _CARD_ARRAY = {
         "type": "object",
         "properties": {
             "name": {"type": "string"},
+            "number": {"type": "string"},
             "tier": {"type": "string", "enum": ["junk", "ok", "nice", "treasure"]},
         },
-        "required": ["name", "tier"],
+        "required": ["name", "number", "tier"],
         "additionalProperties": False,
     },
 }
@@ -377,6 +440,14 @@ def check(req: CheckRequest, request: Request):
         result["gem_alert"] = False
         result["gem_note"] = ""
     else:
+        # Real market-price check overrides the model's by-sight value guess: if
+        # any identified card actually sells for >= the threshold, force the
+        # grown-up alert regardless of how the trade otherwise looks.
+        side, top_price = _price_scan(result)
+        if top_price >= PRICE_THRESHOLD_USD:
+            result["verdict"] = "stop"
+            result["special_side"] = side
+            log.info("check: price override side=%s $%.2f -> stop", side, top_price)
         # The app writes the words from the structured judgment (see build_message).
         result["face"] = pick_face(result)
         result["headline"] = build_message(result)
