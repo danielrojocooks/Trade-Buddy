@@ -135,7 +135,13 @@ def _card_price(name, number):
     if not name or not number:
         return None
     num = str(number).split("/")[0].strip().lstrip("0") or "0"
-    clean = re.sub(r"\s*#?\s*\d+\s*/\s*\d+\s*$", "", str(name)).strip()
+    clean = re.sub(r"\s*#?\s*\d+\s*/\s*\d+\s*$", "", str(name))
+    # Drop finish/rarity descriptors the model sometimes appends; keep the real
+    # name (incl. V/VMAX/ex/GX) so the exact-name lookup matches.
+    clean = re.sub(r"\b(gold|rainbow|secret|rare|holo|holographic|reverse|"
+                   r"full|art|card|shiny|promo|foil|edition|1st|first)\b",
+                   "", clean, flags=re.I)
+    clean = re.sub(r"\s{2,}", " ", clean).strip()
     if not clean:
         return None
     key = (clean.lower(), num.lower())
@@ -246,9 +252,12 @@ A trade swaps Red's items for Yellow's items. Judge it impartially between the
 two sides. You ONLY return structured judgment; the app writes the words a child
 sees, so do not write any sentences yourself.
 
-For every item you can make out, give a short name, its collector number if you
-can read it (the small printed number like "4/102" or "025"; use "" if none or
-unreadable), and a rough tier:
+For every item you can make out, give a short name, its collector number, and a
+rough tier. The name must be the card's printed name ONLY, like "Charizard V" or
+"Articuno": keep V / VMAX / ex / GX if printed, but do NOT add finish or rarity
+words ("gold", "holo", "full art", "secret rare", "rainbow"). The collector
+number is the small printed number like "4/102" or "025" (use "" if unreadable).
+Tier is one of:
   - "junk"     : common, played, the vast majority of items.
   - "ok"       : a little better, a popular or slightly-above-common item.
   - "nice"     : clearly desirable (a holo/shiny/full-art card, a sought-after
@@ -351,15 +360,17 @@ def build_message(r: dict) -> str:
         ])
 
     if v == "uneven":
-        pool = ["This one is maybe a little one-sided."]
-        if nr != ny:
-            pool.append(f"Are you sure you want to trade {nr} {_plural(nr)} for {ny} {_plural(ny)}?")
         if heavier:
             lighter = "yellow" if heavier == "red" else "red"
-            pool.append(f"{CAP[lighter]} might need to add something to make this fair for {CAP[heavier]}.")
-        if special:
-            pool.append(f"{CAP[special]}'s thing is pretty special. Are you both okay with this?")
-        return random.choice(pool)
+            return random.choice([
+                f"{CAP[lighter]} might need to add something to make this fair for {CAP[heavier]}.",
+                f"{CAP[lighter]}'s side looks a little light. Add something to make it even?",
+                f"This is a bit one-sided. {CAP[heavier]} is giving more than {CAP[lighter]}.",
+            ])
+        # No clear heavier side (rare): fall back to the count, then generic.
+        if nr != ny:
+            return f"Are you sure you want to trade {nr} {_plural(nr)} for {ny} {_plural(ny)}?"
+        return "This one is maybe a little one-sided."
 
     return random.choice([
         "That's a good deal if everyone feels okay about it!",
