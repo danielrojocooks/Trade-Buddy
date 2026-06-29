@@ -150,6 +150,20 @@ main {
   animation: spin 0.9s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Buddy greets from the bottom of the capture screen, shrinking to fit so the
+   page never scrolls. */
+.mascot {
+  flex: 1 1 0;
+  min-height: 0;
+  width: auto;
+  max-width: min(70%, 300px);
+  max-height: 100%;
+  object-fit: contain;
+  align-self: center;
+  margin-top: 10px;
+  pointer-events: none;
+}
 .loading-text {
   font-family: "Bangers", cursive;
   color: var(--yellow);
