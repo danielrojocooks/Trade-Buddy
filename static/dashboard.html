@@ -51,6 +51,7 @@
     <div class="stat"><div class="label">Input tokens</div><div class="val" id="in">0</div></div>
     <div class="stat"><div class="label">Output tokens</div><div class="val" id="out">0</div></div>
     <div class="stat"><div class="label">Avg / check</div><div class="val" id="avg">$0.00</div></div>
+    <div class="stat cost"><div class="label">Today (est. / cap)</div><div class="val" id="today">—</div></div>
   </div>
 
   <h2>By model</h2>
@@ -107,6 +108,7 @@
     $("cost").textContent = money(t.cost);
     $("checks").textContent = num(t.checks);
     $("in").textContent = num(t.in_tokens);
+    if (d.today) $("today").textContent = "$" + (d.today.spend || 0).toFixed(2) + " / $" + (d.today.budget || 0).toFixed(2);
     $("out").textContent = num(t.out_tokens);
     $("avg").textContent = money(t.checks ? t.cost / t.checks : 0);
     $("updated").textContent = "updated " + new Date().toLocaleTimeString();

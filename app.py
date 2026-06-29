@@ -19,7 +19,7 @@ import threading
 from collections import deque
 
 import anthropic
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -100,6 +100,54 @@ def _record(model, verdict, i, o):
 def _require_key(key):
     if STATS_KEY and key != STATS_KEY:
         raise HTTPException(status_code=403, detail="forbidden")
+
+
+# --- spend guardrails ------------------------------------------------------
+# Hard daily money ceiling + per-user daily call cap. Both reset at UTC midnight.
+DAILY_BUDGET_USD = float(os.environ.get("DAILY_BUDGET_USD", "5"))
+PER_USER_DAILY = int(os.environ.get("PER_USER_DAILY", "50"))
+_day = {"date": "", "spend": 0.0, "ips": {}}
+
+
+def _today():
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _roll_day():
+    t = _today()
+    if _day["date"] != t:
+        _day["date"], _day["spend"], _day["ips"] = t, 0.0, {}
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _limit_block(ip: str):
+    """Return 'budget' or 'user' if this request should be refused, else None."""
+    with _lock:
+        _roll_day()
+        if _day["spend"] >= DAILY_BUDGET_USD:
+            return "budget"
+        if _day["ips"].get(ip, 0) >= PER_USER_DAILY:
+            return "user"
+    return None
+
+
+def _charge_day(ip: str, cost: float):
+    with _lock:
+        _roll_day()
+        _day["spend"] += cost
+        _day["ips"][ip] = _day["ips"].get(ip, 0) + 1
+
+
+def _blocked_result(headline: str) -> dict:
+    return {"cards_found": False, "verdict": "stop", "face": "confused",
+            "headline": headline, "gem_alert": False, "gem_note": "",
+            "red_cards": [], "yellow_cards": []}
 
 
 _load_stats()
@@ -254,8 +302,16 @@ class CheckRequest(BaseModel):
 
 
 @app.post("/check")
-def check(req: CheckRequest):
+def check(req: CheckRequest, request: Request):
     t0 = time.monotonic()
+    ip = _client_ip(request)
+    block = _limit_block(ip)
+    if block == "budget":
+        log.info("check: blocked daily budget (ip=%s)", ip)
+        return _blocked_result("Buddy needs a little rest. Come back later!")
+    if block == "user":
+        log.info("check: blocked per-user cap (ip=%s)", ip)
+        return _blocked_result("You've checked lots of trades today! Come back tomorrow.")
     log.info("check: start model=%s", MODEL)
     try:
         response = client.messages.create(
@@ -318,6 +374,7 @@ def check(req: CheckRequest):
         len(result.get("red_cards", [])), len(result.get("yellow_cards", [])),
         u.input_tokens, u.output_tokens, (time.monotonic() - t0) * 1000,
     )
+    _charge_day(ip, _cost(MODEL, u.input_tokens, u.output_tokens))
     _record(MODEL, result.get("verdict"), u.input_tokens, u.output_tokens)
     return result
 
@@ -326,7 +383,11 @@ def check(req: CheckRequest):
 def stats(key: str = ""):
     _require_key(key)
     with _lock:
-        return {"model": MODEL, "totals": _stats, "recent": list(_recent)}
+        _roll_day()
+        return {"model": MODEL, "totals": _stats, "recent": list(_recent),
+                "today": {"date": _day["date"], "spend": _day["spend"],
+                          "budget": DAILY_BUDGET_USD, "users": len(_day["ips"]),
+                          "per_user_cap": PER_USER_DAILY}}
 
 
 @app.post("/stats/reset")
