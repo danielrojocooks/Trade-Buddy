@@ -141,20 +141,15 @@ main {
 
 /* ---- loading ---- */
 #loading { justify-content: center; padding-top: 60px; }
-/* Buddy digging: a 4-frame sprite sheet (loading.png) cycled with steps(4).
-   Fixed px so the sprite cells stay pixel-aligned. */
-.runner {
-  width: 240px;
-  height: 235px;
-  background-image: url(/loading.png);
-  background-repeat: no-repeat;
-  background-size: 960px 235px; /* 4 frames x 240px */
-  animation: dig 0.5s steps(4) infinite;
+.spinner {
+  width: 84px;
+  height: 84px;
+  border: 9px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
 }
-@keyframes dig {
-  from { background-position: 0 0; }
-  to   { background-position: -960px 0; }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Buddy greets from the bottom of the capture screen, shrinking to fit so the
    page never scrolls. */
